@@ -15,7 +15,7 @@ $config["urls"] = array("http://127.0.0.1/multidomain",
    */
 
 $config["oe"]["url"] = "http://localhost:8069";
-$config["oe"]["dbname"] = "carif_dev5";
+$config["oe"]["dbname"] = "demo";
 
 
 ?>
