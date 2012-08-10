@@ -1,0 +1,21 @@
+<?php
+
+
+  /**
+   * urls of the different domains that needs to be syncronised.
+   *    auth-with-session-id.php should be found in it.
+   */
+
+$config["urls"] = array("http://127.0.0.1/multidomain",
+                        "http://localhost/multidomain");
+
+
+  /**
+   * OpenERP instance to use
+   */
+
+$config["oe"]["url"] = "http://localhost:8069";
+$config["oe"]["dbname"] = "carif_dev5";
+
+
+?>
