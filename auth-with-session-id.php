@@ -9,7 +9,7 @@ header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 header('Access-Control-Allow-Headers: origin, content-type, accept');
 
 $oe = new OEAuth($config["oe"]["url"], $config["oe"]["dbname"]);
-$oe->setSessionInformation($_REQUEST["oe_session_id"], $_REQUEST["oe_cookie"]); 
+$oe->authTokenStore->set($oe->authWebTransmitter->read_tokens_from_request()); 
 
 if ($oe->is_auth()) {
   echo "AUTH";

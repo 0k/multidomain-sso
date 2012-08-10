@@ -50,7 +50,7 @@ color: green;
 
     </style>
 
-    <?php echo $oe->js_code; ?>
+    <?php echo $oe->js_code_for_propagate(); ?>
 
   </head>
   <body>

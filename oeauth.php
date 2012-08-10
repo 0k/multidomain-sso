@@ -1,99 +1,109 @@
 <?php
 
 require_once "php-oe-json/openerp.php";
+require_once "auth.php";
+
 
 /**
- * Manages an oe connection and it's relation with php session,
- * provides also facilities to send authentication to other domains.
+ * OpenERP Authentication Provider
  */
-class OEAuth {
-
-  public $js_code = "";
+class OEAuthProvider extends AuthProvider {
 
   function __construct($url, $db) {
     $this->oe = new OpenERP($url, $db);
-    $this->_auth_cache = NULL;
-    $this->_auth_cache_dirty = True;
-
-    session_start();
   }
 
-  public function is_auth() {
-    if ($this->_auth_cache !== NULL &&
-        $this->_auth_cache_dirty === False)
-      return $this->_auth_cache;
-
-    $auth = False;
-    if (isset($_SESSION["oe_session_id"])) {
-      if ($this->oe->loginWithSessionId($_SESSION["oe_session_id"],$_SESSION["oe_cookie"]))
-        $auth = True;
-    }
-
-    $this->_auth_cache = $auth;
-    $this->_auth_cache_dirty = False;
-    return $this->_auth_cache;
-  }
-
-  public function setSessionInformation($oe_session_id, $oe_cookie) {
-    $_SESSION["oe_session_id"] = $oe_session_id;
-    $_SESSION["oe_cookie"] = $oe_cookie;
-  }
-
-  /** authenticating by credential
+  /**
+   * Login with session tokens to resume an existing session
    *
-   * This function must validate authentication of given credentials
    */
-  public function authenticate($credentials) {
+  public function login_with_tokens($tokens) {
+    return $this->oe->loginWithSessionId($tokens["oe_session_id"],$tokens["oe_cookie"]);
+  }
 
+  /**
+   * Returns tokens from the current opened session.
+   *
+   * Note that this method will be called only after login
+   *
+   */
+  public function get_tokens() {
+    return array("oe_session_id" => $this->oe->session_id,
+                 "oe_cookie" => $this->oe->cookie);
+  }
+
+  /**
+   * Returns True/False whether credentials are valid and session created.
+   *
+   * Note that some sort of a session must be created as we will ask for
+   * tokens of this session with ``get_tokens()``.
+   *
+   */
+  public function login($credentials) {
     if (!(isset($credentials["login"]) && isset($credentials["password"])))
       return False;
 
-    $this->oe->login($credentials["login"], $credentials["password"]);
-
-    if ($this->oe->authenticated) {
-      $this->setSessionInformation($this->oe->session_id, $this->oe->cookie);
-      $this->_auth_cache = True;
-      $this->_auth_cache_dirty = False;
-    };
-    $this->js_code = $this->js_code_for_propagate();
-    return $this->oe->authenticated;
+    return $this->oe->login($credentials["login"], $credentials["password"]);
   }
 
-  /** deauthenticating
+  /**
+   * Closes the current session and returns boolean upon success.
    *
-   * This function must unlog current session
    */
-  public function deauthenticate() {
-
-    $this->oe->logout(); // doesn't seem to work how it should
-
-    unset($_SESSION["oe_session_id"]);
-    unset($_SESSION["oe_cookie"]);
-    $this->_auth_cache = False;
-    $this->_auth_cache_dirty = False;
-
-    $this->js_code = $this->js_code_for_propagate();
-    return True; // logout succeeded
+  public function logout() {
+    return $this->oe->logout(); // doesn't seem to work how it should
   }
 
-  /** returns javascript code to define the ``get_session_ids()``
-   * function and urls variable
-   *
-   */
-  public function js_code_for_propagate() {
+}
 
-    global $config;
+/**
+ * Uses $_SESSION variable to store authentication tokens
+ */
+class SessionAuthTokenStore extends AuthTokenStore {
 
-    $oe_session_id = isset($_SESSION["oe_session_id"])?$_SESSION["oe_session_id"]:"";
-    $oe_cookie = isset($_SESSION["oe_cookie"])?$_SESSION["oe_cookie"]:"";
+  private $key = "auth_tokens";
+
+  function __construct() {
+    session_start();
+  }
+
+  public function exists() {
+    return isset($_SESSION[$this->key]);
+  }
+
+  public function set($tokens) {
+    $_SESSION[$this->key] = $tokens;
+  }
+
+  public function get() {
+    return isset($_SESSION[$this->key])?$_SESSION[$this->key]:null;
+  }
+
+}
+
+/**
+ * Silent JS ajax call to propagate tokens.
+ */
+class JsAuthWebTransmitter extends AuthWebTransmitter {
+
+  function __construct($urls) {
+    $this->urls = $urls;
+  }
+
+  public function read_tokens_from_request() {
+    return array("oe_session_id" => $_REQUEST["oe_session_id"],
+                 "oe_cookie" => $_REQUEST["oe_cookie"]);
+  }
+
+  public function js_propagation_code($tokens) {
 
     $url_js_code = array();
-    foreach($config["urls"] as $url) {
+    foreach($this->urls as $url) {
       $url_js_code[] = "'$url'";
     };
     $url_js_code = implode(", ", $url_js_code);
 
-    return "<script type='text/javascript'>\n
+    return "<script type='text/javascript'>
 
     urls = [$url_js_code];
 
@@ -131,8 +141,7 @@ class OEAuth {
 
     function get_session_ids() {
       var res = $.Deferred();
-      res.resolve({oe_session_id: '" . $oe_session_id . "',
-                   oe_cookie: '" . $oe_cookie . "'});
+      res.resolve(" . json_encode($tokens, true) . ");
       return res;
     }
 
@@ -144,11 +153,30 @@ class OEAuth {
 
   }
 
+};
+
+
+
+
+/**
+ * Manages an oe connection and it's relation with php session,
+ * provides also facilities to send authentication to other domains.
+ */
+class OEAuth extends Auth {
+
+  function __construct($url, $db) {
+    global $config;
+    $this->authProvider = new OEAuthProvider($url, $db);
+    $this->authTokenStore = new SessionAuthTokenStore();
+    $this->authWebTransmitter = new JsAuthWebTransmitter($config["urls"]);
+  }
+
+
   /**
-   * call delegation Delegation to $this->oe
+   * call delegation Delegation to $this->authProvider->oe
    */
   function __call($method, $params) {
-    return $this->oe->__call($method, $params);
+    return $this->authProvider->oe->__call($method, $params);
   }
 }
 
