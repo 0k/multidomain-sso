@@ -5,6 +5,7 @@ require_once "oeauth.php";
 
 $oe = new OEAuth($config["oe"]["url"], $config["oe"]["dbname"]);
 
+$bad_login = False;
 $is_auth = $oe->is_auth();
 $was_auth = $is_auth;
 if ($is_auth) {
@@ -13,12 +14,14 @@ if ($is_auth) {
     $is_auth = False;
   };
 } else {
-  $oe->authenticate($_POST);
-  $is_auth = $oe->is_auth();
+  if (isset($_POST["action"])) {
+    $oe->authenticate($_POST);
+    $is_auth = $oe->is_auth();
+    if (!$is_auth) $bad_login = True;
+  };
 }
 
-
-$authentication_msg = "<p>You are " . ($is_auth?"<span class='green'>authentified</span>":"unknown") .
+$authentication_msg = "<p id='status'>You are " . ($is_auth?"<span class='green'>authentified</span>":"unknown") .
      " here, on  " . $_SERVER['HTTP_HOST'] ."</p>";
 
 if (!$is_auth) {
@@ -44,8 +47,35 @@ if (!$is_auth) {
 
     <style type="text/css">
 
+body, div {
+  font-family: arial;
+  padding: 5px;
+}
+
+div#domain-list {
+  float: right;
+  border: #aaa 1px solid;
+  padding: 5px;
+  font-size: 80%;
+  background-color: #eee;
+}
+
+div#session {
+  float: left;
+  background-color: #ff8;
+}
+
 span.green {
-color: green;
+  color: green;
+}
+
+div.clear {
+  clear: both;
+}
+
+em.bad-login {
+  font-weight: bold;
+color: red;
 }
 
     </style>
@@ -57,14 +87,25 @@ color: green;
 
     <?php echo $authentication_msg; ?>
 
+    <div id="domain-list">These domain shares authentication info:
+    <?php
+    foreach($config["urls"] as $url) {
+      echo "<li><a href='$url'>$url</a></li>";
+    }
+    ?>
+    </div>
+
+    <div id="session">
+    <?php if ($bad_login) echo "<em class='bad-login'>Bad login !</em>"; ?>
     <form method="post">
       <?php echo $form_content; ?>
     </form>
-
+    </div>
+    <div class="clear" />
     <?php
 
     if ($is_auth) {
-      echo "OE DATA ACCESS: <pre>";
+      echo "Sample OpenERP query which requires login: <pre>";
       $partners = $oe->read(array(
           'model' => 'res.partner',
           'fields' => array('name', 'city'),
@@ -74,7 +115,12 @@ color: green;
         echo "<li>" . $partner["name"] . " - " . $partner["city"] . "</li>";
       }
       echo "</pre>";
+    } else {
+      echo "<em>You are not authorized, you should try to login with 'admin', and 'demo' as password.</em>";
     };
+
     ?>
+
+
   </body>
 </html>
