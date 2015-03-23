@@ -35,8 +35,8 @@ Demo
 
 Want to test-it ? check:
 
-  - http://foo.demo.simplee.fr/multidomain-sso/php
-  - http://bar.demo.simplee.fr/multidomain-sso/php
+  - http://foo.demo.0k.io/multidomain-sso/php
+  - http://bar.demo.0k.io/multidomain-sso/php
 
 These domain are linked. If it doesn't seem to work with you, please send
 me a issue request !
@@ -106,6 +106,6 @@ Requirements
 This packages requires php-oe-json_ which itself will require
 Tivoka_ (use this link to get our fork of tivoka with our mandatory patches).
 
-.. _php-oe-json: https://github.com/simplee/php-oe-json
-.. _tivoka: https://github.com/simplee/tivoka
+.. _php-oe-json: https://github.com/0k/php-oe-json
+.. _tivoka: https://github.com/0k/tivoka
 
