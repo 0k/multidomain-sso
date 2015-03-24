@@ -1,6 +1,6 @@
 <?php
 
-require_once "php-oe-json/openerp.php";
+require_once "vendor/autoload.php";
 require_once "auth.php";
 
 
@@ -10,7 +10,7 @@ require_once "auth.php";
 class OEAuthProvider extends AuthProvider {
 
   function __construct($url, $db) {
-    $this->oe = new OpenERP($url, $db);
+    $this->oe = new PhpOeJson\OpenERP($url, $db);
   }
 
   /**
