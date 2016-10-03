@@ -104,8 +104,9 @@ Requirements
 ------------
 
 This packages requires php-oe-json_ which itself will require
-Tivoka_ (use this link to get our fork of tivoka with our mandatory patches).
+Tivoka_ which was patched for session id support on version ``>= 3.2.*`` .
+
 
 .. _php-oe-json: https://github.com/0k/php-oe-json
-.. _tivoka: https://github.com/0k/tivoka
+.. _Tivoka: https://github.com/marcelklehr/tivoka
 
